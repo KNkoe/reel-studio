@@ -1,7 +1,8 @@
 # History
 
 What was built, what was rejected and why. Newest last. Paths in old entries refer to the
-folder this work started in; the skill now lives in `skills/panel-reel/`.
+folder this work started in; the skill now lives in `skills/panel-reel/`. These are notes from
+the author's own edits, kept so the reasons travel with the code.
 
 ## 2026-11-24 — Repoji demo reel (reference-style clone)
 - Cut a 15-min vertical demo (already split screen/face, burned-in captions) down to a 37s reel in the style of an IG reel: dark graphic panel over cropped face, cream mono captions on the seam, orange outline-highlight cards, two full-screen takeovers.
@@ -163,3 +164,8 @@ folder this work started in; the skill now lives in `skills/panel-reel/`.
   copied from the third-party editing pack the work started in (it has no licence file).
 - Tested from a fresh clone on the same Mac: tool tests and Clapless tests pass and the room
   preview matched. Not tested on a second machine; the iPhone build was not rebuilt.
+
+## 2026-11-26 — published as open source
+
+- Reel Studio and Clapless made public under the MIT licence, with the pages rewritten for
+  readers other than the author. Third-party tools and models keep their own licences.

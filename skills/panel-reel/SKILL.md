@@ -15,6 +15,10 @@ description: >-
 
 # panel-reel: the creator's saved style
 
+"They" below is the person whose taste this records, and the quotes are theirs. If someone
+else is using this repository, treat those choices as starting points: ask, and put their
+answers in `docs/PREFERENCES.md`.
+
 Two ways to finish a video, both on this Mac and free:
 
 | What they recorded | What to run |

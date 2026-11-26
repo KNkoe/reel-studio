@@ -4,6 +4,8 @@ Everything here came from the creator reviewing real edits. The skill explains h
 says what they want. Add to it when they give new feedback, and change a rule only when they
 say so.
 
+**Using this yourself?** These are the original author's choices. Replace them with yours.
+
 ## Story
 
 - Find the point they care about and prove it with their own screens and footage.

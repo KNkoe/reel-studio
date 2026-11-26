@@ -18,8 +18,7 @@ git clone --recurse-submodules https://github.com/KNkoe/reel-studio ~/reel-studi
 cd ~/reel-studio
 ```
 
-Both repositories are private: sign in to GitHub first (`gh auth login`).
-Keep the folder where you cloned it, or run `--link` again after moving it.
+Both repositories are public, so no sign-in is needed. Keep the folder where you cloned it, or run `--link` again after moving it.
 
 ## 2. Editing tools
 
@@ -85,7 +84,8 @@ limits: the camera must be roughly level and still during a take, and the record
 9:16. The room itself is designed around a speaker about an arm's length away. Results on a
 different Mac, iPhone, room or light have not been tested.
 
-## Moving your preferences and old work
+## Your preferences and old work
 
-`docs/PREFERENCES.md` travels with the repository. Recordings, renders and project folders do
+`docs/PREFERENCES.md` travels with the repository: if you are not its author, rewrite it
+before your first edit. Recordings, renders and project folders do
 not: copy `~/Movies/Clapless` and `projects/` yourself if you want them.
