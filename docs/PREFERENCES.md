@@ -31,12 +31,19 @@ say so.
   previews move like a mirror.
 - The screen recording is never graded.
 
-## When there is no screen recording
+## Views and looks
 
-- Explain the system with **a lot of 3D animation** (2026-11-26). Show the full face when
-  talking about other things, and their event photos where they fit.
-- 3D may be modelled in Blender or downloaded (open licence). **Check every object properly**,
-  in stills and in motion: an earlier video's crude trash can was not good enough.
+Set on 2026-11-27.
+
+- **Three views.** Split (visuals above, speaker below) most of the video. Full face now and
+  then, when not explaining something with visuals. Visuals only, with no speaker, only when
+  a point is really being stressed, and not often.
+- **Interfaces keep the 3D feel.**
+- **Visuals made for a video** (explainers and similar screens) follow a style the creator
+  keeps private, outside this repository. Do not add it, or a description of it, here.
+- **Keep the 3D room** behind the speaker, fitted to the camera's angle.
+- Show their event photos where they fit.
+- **Check every object properly**, in stills and in motion.
 
 ## Split-screen reels
 
@@ -45,7 +52,7 @@ say so.
   within x 100–980.
 - **Big text only.** No small labels, badge pills, kickers, headers or tags. Headlines
   leave within 4 seconds.
-- Lots of motion: camera moves on the screen, face punch-ins, 3D scenes.
+- Lots of motion: camera moves on the 3D screen and face punch-ins.
 - Fonts, accent colour and logo come from the product shown, checked in its source.
 - Captions: 2–3 word chunks in a white box in the interface's font, without punctuation.
 - "Danko!" is their word for thank you; keep their wording.

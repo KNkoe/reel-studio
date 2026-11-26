@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SCRIPTS = HERE.parent / "scripts"
+SCRIPTS = HERE
 FPS, RATE = 30, 48000
 TAGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 

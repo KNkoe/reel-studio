@@ -4,8 +4,9 @@ description: >-
   The creator's saved video style. Full-frame shots of the speaker in a rendered corner room
   fitted to each recording's camera angle, smooth skin and a light colour touch; and the
   split-screen reel (3D screen stage with camera moves, head cut out above a rounded face
-  card, big short-lived headlines, never small labels or badges, full-screen 3D scenes,
-  fonts matched to the interface on screen). Use whenever asked to edit a video "in the
+  card, big short-lived headlines, never small labels or badges, fonts matched to the
+  interface on screen), plus the rules for which view and which look to use. Interfaces keep
+  a 3D feel; explainer visuals use a separate private skill. Use whenever asked to edit a video "in the
   same style", "in my style", "like the last reel", to change or remove the background, or
   to edit a Clapless take, a ScreenKite recording (.skbundle), a screen recording with a
   talking head, a product demo or an app walkthrough, including from a brand-new thread,
@@ -19,13 +20,43 @@ description: >-
 else is using this repository, treat those choices as starting points: ask, and put their
 answers in `docs/PREFERENCES.md`.
 
-Three ways to finish a video, all on this Mac and free:
+Two ways to finish a video here, both on this Mac and free:
 
 | What they recorded | What to run |
 |---|---|
 | Upright camera of them talking (a Clapless take or any 9:16 clip) | **Full frame**: `scripts/room_reel.py` |
 | Screen recording plus face camera | **Split screen**: `plan.json` and `scripts/build.py` |
-| Upright camera explaining something, no screen recording | **3D explainer**: follow [`three/README.md`](three/README.md) |
+
+For a recording of them explaining something with no screen recording, also read "Which look
+for what": the visuals for it come from outside this repository.
+
+## Which look for what
+
+| On screen | Look |
+|---|---|
+| **A real interface**: an app or site they recorded | **Keep the 3D feel**: the split-screen build, the screen moving in 3D |
+| **Anything made for the video**: explanations, lists, numbers, diagrams, their photos, end cards | Their **private explainer style** |
+| Behind the speaker | The fitted 3D room |
+
+The creator keeps the explainer style to themselves, so it is not in this repository. If a
+`reel-explainer` skill is installed, read it and use it for those visuals. If it is not, ask
+what they should look like. Either way do not make up a style, fall back to the built-in 3D
+card scenes, or add anything about the private style to this repository.
+
+## The three views
+
+| View | When |
+|---|---|
+| **Split**: visuals or the interface above, speaker below | **Most of the video** |
+| **Full face** | Now and then, when they are not explaining something with visuals |
+| **Visuals only**: no speaker | Only when a point is really being stressed. Rarely |
+
+Mark every part of the script as one of the three before building, and check the balance.
+
+**What the split-screen build can do today:** the split view. Its full-face `solo` shots are
+older code that was rejected (see below), its only visuals-only shots are the built-in 3D
+card scenes, and a full-screen shot of the interface without the speaker is not built. When a
+screen reel needs one of the other two views, say so and offer to build it.
 
 ## Find the repo first
 
@@ -78,11 +109,14 @@ least 3.5%). `--look '{"skin": 0.7}'` changes retouch or colour. The camera may 
 recordings but must stay still within one. It assumes a roughly level camera, and that the
 whole recording is wanted: cut it first if only part is.
 
-For a talk-only explanation, with cuts, captions, headlines and 3D scenes over this look,
-follow [`three/README.md`](three/README.md) and keep the project outside the repository.
+For a talk-only recording, `python3 -I "$SKILL/scripts/cut.py" <project> --plan` transcribes
+on this Mac, and the same command without `--plan` cuts the ranges listed in the project's
+`reel.json` (see the top of the script). Render the room from `work/face_cut.mp4`, keep the project outside the
+repository, and take the visuals, captions and assembly from the explainer skill.
 
-**Not built yet:** the screen recording together with this full-frame look. `build.py` still uses its own footage framing for the split screen and
-its older `solo` full-screen shots. Say so if asked, and offer to wire it in.
+**Not built yet:** the screen recording together with this full-frame look. `build.py` still
+uses its own footage framing for the split screen and its older `solo` full-screen shots. Say
+so if asked, and offer to wire it in.
 
 ## The style rules
 
@@ -118,13 +152,12 @@ These came from the creator reviewing real edits. `build.py` enforces most of th
    was rejected because the cut-out and made room did not hold up on soft 1080p footage;
    with sharp, well-lit upright 4K and the room matched to the camera's angle it was
    approved. When the screen is the subject, use the split screen.
-5. **Keep it moving.** The screen is a 3D object, never a flat card:
+5. **Keep the interface 3D and moving.** The screen is a 3D object, never a flat card:
    - a **camera shot** each time the narration points somewhere new, roughly every
      3–8 seconds, with push-ins on the exact button, number or row being discussed;
    - the face punches in when big text lands and breathes slowly otherwise
-     (automatic);
-   - **4–7 full-screen 3D scenes** at turning points (opening idea, the key number,
-     the payoff, the ask), plus a 3D end card.
+     (automatic).
+   The 3D is for the interface. Visuals made for the video follow "Which look for what".
 6. **Fonts match the interface in every video.** Find proof, never guess: the app's
    source CSS or font config, its app bundle, or the live site's computed
    `font-family`. A Mac app using `-apple-system` means SF Pro
@@ -135,7 +168,7 @@ These came from the creator reviewing real edits. `build.py` enforces most of th
    web font is really loaded: a stylesheet naming a font nobody ships renders in
    the fallback. If the interface sets highlighted words in a second face (say an
    orange italic serif), put that file in `font.accent` and `*word*` uses it.
-7. **3D numbers must be real:** read them off the screen or take them from what was
+7. **Numbers on screen must be real:** read them off the screen or take them from what was
    said. Do not invent statistics, availability ("available now") or claims.
 
 ## Recording with Clapless (iPhone camera, Mac screen and mic)
@@ -267,10 +300,7 @@ Generate it from a small `make_plan.py` in the project so revisions stay readabl
   "shots": [{"at": 0, "focus": [960, 716, 1980], "tilt": [8, -16]},
             {"at": "a@8.9", "focus": [420, 320, 900]}],
   "headlines": [{"at": 0, "hold": 3.9, "lines": ["I built a disk", "*cleanup tool.*"]}],
-  "scenes": [
-    {"type": "donut", "from": "a3", "lines": ["It has AI", "*built in.*"], "logo": "App name"},
-    {"type": "donut", "end_card": true, "lines": ["Would you", "*use it?*"], "logo": "App name"}
-  ]
+  "scenes": []
 }
 ```
 
@@ -302,6 +332,13 @@ Generate it from a small `make_plan.py` in the project so revisions stay readabl
   width near the window's own width shows it all; about 900–1100 is a close-up.
   `tilt` is optional (automatic: strong on wide shots, gentle on close-ups).
 - `*word*` colours a word with the accent.
+
+`scenes` takes the built-in 3D card scenes below. They are visuals made for the video, so
+leave the list empty unless the creator asks for them (see "Which look for what"). An entry
+looks like `{"type": "donut", "from": "a3", "lines": ["It has AI", "*built in.*"], "logo": "App name"}`;
+`"end_card": true` instead of `from` makes it the closing card. `tail` is the time that card
+holds after the voice; without a closing card the video ends with the voice, so give the last
+segment a little room.
 
 | Scene | Fields | Use it for |
 |---|---|---|

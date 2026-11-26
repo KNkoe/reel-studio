@@ -180,3 +180,14 @@ the author's own edits, kept so the reasons travel with the code.
 - The 3D kit, cutter and compositor were then moved to `skills/panel-reel/three/` for reuse,
   with a movement preview (19 scenes in about 3 minutes, against a first render that had to
   be partly repeated). At 80% size, two test scenes rendered about 27% faster.
+
+## 2026-11-27 — three views, and two looks
+
+- The creator set the views: split most of the time, full face now and then, visuals only when
+  a point is really being stressed.
+- Interfaces keep the 3D feel. Visuals made for a video now follow a style they keep private,
+  outside this repository.
+- The 3D explainer tools were removed because renders took too long; they remain in git
+  history. The talk-only cutter stays, as `scripts/cut.py`.
+- With no card scenes by default, a screen reel without a closing card showed a blank screen and
+  no speaker after the voice. It now ends with the voice (checked on synthetic footage).

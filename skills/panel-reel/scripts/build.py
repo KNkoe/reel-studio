@@ -133,7 +133,9 @@ class Plan:
             self.segments.append({**seg, "frames": frames, "start": offset, "dur": frames / FPS})
             offset += frames / FPS
         self.voice = offset
-        self.total = offset + self.data.get("tail", 2.5)
+        # The footage ends with the voice. Only a closing card has anything to show after it.
+        closing = any(scene.get("end_card") for scene in self.data.get("scenes", []))
+        self.total = offset + (self.data.get("tail", 2.5) if closing else 0.0)
         self.by_id = {s["id"]: s for s in self.segments}
         self.solo = self.solo_windows()
 
