@@ -1,0 +1,4 @@
+[submodule "apps/clapless"]
+	path = apps/clapless
+	url = https://github.com/KNkoe/clapless
+	branch = main

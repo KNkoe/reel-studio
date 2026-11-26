@@ -14,7 +14,7 @@ the Python packages; Homebrew installs the newest of the rest, so test after ins
 ## 1. Get the code
 
 ```bash
-git clone --recurse-submodules <this repository's address> ~/reel-studio
+git clone --recurse-submodules https://github.com/KNkoe/reel-studio ~/reel-studio
 cd ~/reel-studio
 ```
 
@@ -56,6 +56,16 @@ On the iPhone: turn on Developer Mode, trust the Mac, trust your developer certi
 allow camera, microphone and local network. On the Mac: allow Screen Recording and the
 microphone. With a free Apple developer account the iPhone app expires after 7 days: run
 `scripts/phone.sh` again. Pair once; both screens show the same six digits.
+
+### Updating the linked app
+
+`apps/clapless` is pinned to one commit of its own repository. After pushing app changes
+there, move the pin and commit it here:
+
+```bash
+git submodule update --remote apps/clapless
+git add apps/clapless && git commit -m "Update Clapless"
+```
 
 ## 4. Check it works
 
