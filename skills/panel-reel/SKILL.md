@@ -165,6 +165,10 @@ live reading: ISO 800 or lower is good, above 1400 it warns); the right micropho
 - A take is `~/Movies/Clapless/<date_time>/`: `camera.mov`, `screen.mp4`, `mic.m4a`,
   `take.json`. Use it only when `status` is `ready`, and read its `warnings`.
 - `screen.mp4` and `mic.m4a` begin at the same moment, so screen time is mic time.
+- `take.json` `screen.app` is set when only that app was recorded: `screen.mp4` is then already
+  its window (any size, black where a resized or switched window does not fill it). Take
+  `screen_vf` from real frames; do not reuse a whole-screen crop. Without `screen.app` it is
+  the whole screen.
 - `take.json` `sync` holds the match by sound, made by `sync_camera.py`: use `videoOffset`
   and `videoDrift` when `matchedBySound` is true. If it is `weak`, check lips against sound
   at the start and end before building. If `matchedBySound` is false, do not edit with the
