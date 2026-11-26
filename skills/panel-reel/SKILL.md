@@ -64,7 +64,8 @@ python3 -I "$SKILL/scripts/room_reel.py" <take folder or video> "$PROJECTS/<slug
    the report says so: pass that on.
 3. **Check** the flicker scan it prints and look at every frame it names, then sample frames
    across the video, enlarged: ears, head edge, hands, shoulders, bottom edge. Say that the
-   scan and samples are not the same as watching it.
+   scan and samples are not the same as watching it. Fast hand movement can be flagged
+   without any fault.
 
 It outputs `room-vN.mp4` (1080×1920, 30 fps, the recording's own sound) and never overwrites.
 `--trim 0.035` sets the strip cut from the bottom (default: sized to the real table edge, at

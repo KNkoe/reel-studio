@@ -149,3 +149,17 @@ folder this work started in; the skill now lives in `skills/panel-reel/`.
   Contact sheets looked fine. Cause was the Apple-mask gate; ratio 0.35 plus gate off.
 - A sliver of real table cut badly at the bottom corner; removed with a 3.5% zoom.
 - Done with a project render script, not `build.py`: that still assumes a split screen.
+
+## 2026-11-26 — full frame approved, room fitted automatically, Reel Studio
+
+- The corner-room take was approved ("I love it, now we can have full frames our videos like
+  we intended"). Full frame is wanted again.
+- The camera is not fixed, so `probe.swift` and `fit_room.py` now measure roll, table slope,
+  eye height and light side per recording; `room_reel.py` does the whole full-frame render.
+  Checked on four takes: the measured lines sat on the real door frame and table edge where
+  those showed. A hidden table edge falls back to the approved angle.
+- The flicker scan also flags fast hand movement; the flagged frames looked intact on sample.
+- Editing moved into this repository with Clapless linked at `apps/clapless`. Nothing was
+  copied from the third-party editing pack the work started in (it has no licence file).
+- Tested from a fresh clone on the same Mac: tool tests and Clapless tests pass and the room
+  preview matched. Not tested on a second machine; the iPhone build was not rebuilt.
