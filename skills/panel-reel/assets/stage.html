@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
+    <style>
+      %%FONT_FACES%%
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html, body { width:1080px; height:1920px; overflow:hidden; background:%%GROUND%%; }
+      #root { position:relative; width:1080px; height:1920px; overflow:hidden; background:%%GROUND%%; font-family:"UIFont"; color:%%INK%%; }
+
+      /* 3D stage: floor grid, drifting lights and the screen as a slab with depth */
+      #stage { position:absolute; left:0; top:0; width:1080px; height:%%STAGE_H%%px; overflow:hidden; z-index:1; perspective:2200px; isolation:isolate; }
+      .glow { position:absolute; width:900px; height:900px; border-radius:50%; background:radial-gradient(circle, %%ACCENT%%55 0%, %%ACCENT%%00 68%); }
+      #glow1 { left:-380px; top:-200px; } #glow2 { left:520px; top:520px; }
+      #floor { position:absolute; left:-900px; top:760px; width:2880px; height:1500px; transform-origin:50% 0; transform:rotateX(76deg); opacity:.32;
+        background-image:linear-gradient(%%ACCENT%% 2px, transparent 2px), linear-gradient(90deg, %%ACCENT%% 2px, transparent 2px); background-size:120px 120px; }
+      #cam { position:absolute; left:%%CX%%px; top:%%CY%%px; width:0; height:0; transform-style:preserve-3d; }
+      #pan { position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d; }
+      .slab { position:absolute; left:-%%HALF_W%%px; top:-%%HALF_H%%px; width:%%WIN_W%%px; height:%%WIN_H%%px; border-radius:34px; }
+      #win { overflow:hidden; background:#f6f7fb; box-shadow:0 90px 190px rgba(0,0,0,.65), 0 0 150px %%ACCENT%%66; }
+      #scr { width:%%WIN_W%%px; height:%%WIN_H%%px; display:block; }
+      .d1 { background:%%EDGE1%%; transform:translateZ(-9px); } .d2 { background:%%EDGE2%%; transform:translateZ(-20px); } .d3 { background:%%EDGE3%%; transform:translateZ(-32px); }
+
+      /* face camera: a rounded card, with the speaker cut out so their head stands above its top edge.
+         Both layers share one zoom, so the cut-out stays registered while the card holds still. */
+      #face { position:absolute; left:0; top:%%FACE_TOP%%px; width:1080px; height:%%FACE_H%%px; overflow:hidden; z-index:3; }
+      #card { position:absolute; left:0; top:%%CARD_Y%%px; width:1080px; height:%%CARD_H%%px; overflow:hidden;
+        border-radius:%%RADIUS%%px %%RADIUS%%px 0 0; }
+      #cardshadow { position:absolute; left:0; top:%%CARD_TOP%%px; width:1080px; height:%%CARD_H%%px; z-index:2;
+        border-radius:%%RADIUS%%px %%RADIUS%%px 0 0; box-shadow:0 -18px 70px rgba(0,0,0,.5); }
+      #facecam { position:absolute; left:0; top:-%%CARD_Y%%px; }
+      /* clips outside the zoom, so the clip holds still with the card while the footage zooms */
+      #cutclip { position:absolute; left:0; top:0; width:1080px; height:%%FACE_H%%px; clip-path:path("%%CUT_CLIP%%"); }
+      #cutwrap { position:absolute; left:0; top:0; }
+      .zoom { width:1080px; height:%%FACE_H%%px; transform-origin:%%ORIGIN%%; }
+      #lower { width:1080px; height:%%FACE_H%%px; object-fit:cover; display:block; }
+      #cutout { width:1080px; height:%%CUT_H%%px; display:block; }
+      #seam { display:%%SEAM%%; position:absolute; left:0; top:1197px; width:1080px; height:6px; z-index:6; background:linear-gradient(90deg, transparent, %%ACCENT%% 25%, %%ACCENT%% 75%, transparent); }
+
+      /* solo: the speaker alone fills the frame. Studio and speaker are separate layers so the camera
+         can move them by different amounts; the shadow stays put, like light falling off. */
+      /* its own name: "solo" alone marks captions and headlines, and a bare .solo rule hid them all */
+      .solowrap { position:absolute; left:0; top:0; width:1080px; height:1920px; overflow:hidden; z-index:5; visibility:hidden; opacity:0; }
+      .solobg { position:absolute; left:0; top:0; width:1080px; height:1920px; transform-origin:540px %%SOLO_ORIGIN%%px; }
+      .soloman { position:absolute; left:0; top:%%SOLO_TOP%%px; width:1080px; height:%%SOLO_H%%px; transform-origin:540px %%SOLO_PIVOT%%px;
+        -webkit-mask-image:linear-gradient(transparent 0, #000 46px); mask-image:linear-gradient(transparent 0, #000 46px); }
+      .soloman video { width:1080px; height:%%SOLO_H%%px; display:block; }
+      /* it covers speaker and wall alike (nobody turns see-through) and is solid 195px down; any
+         taller and it swallowed the chin when the speaker leaned in */
+      .soloshade { position:absolute; left:0; top:%%SHADE_TOP%%px; width:1080px; height:%%SHADE_H%%px;
+        background:linear-gradient(rgba(14,8,5,0) 0, rgba(14,8,5,.07) 45px, rgba(14,8,5,.26) 90px, rgba(14,8,5,.56) 130px, rgba(14,8,5,.88) 165px, rgb(14,8,5) 195px, rgb(14,8,5) 100%); }
+
+      /* big text only: no labels, no badges */
+      #scrim { position:absolute; left:0; top:0; width:1080px; height:700px; z-index:7; opacity:0;
+        background:linear-gradient(%%GROUND%% 0%, %%GROUND%%fa 79%, %%GROUND%%00 100%); }
+      .headline { position:absolute; left:40px; width:1000px; top:282px; z-index:8; text-align:center; perspective:900px; }
+      .headline.solo { top:258px; }
+      .hl { display:block; opacity:0; font-size:108px; font-weight:820; letter-spacing:-.032em; line-height:1.08; white-space:nowrap; transform-origin:50% 100%;
+        text-shadow:0 8px 36px rgba(0,0,0,.75); }
+      .hl em, .big em { font-style:normal; color:%%ACCENT%%; %%EM%% }
+
+      /* full-screen 3D scenes */
+      .scene { position:absolute; left:0; top:0; width:1080px; height:1920px; z-index:25; }
+      .s-cards, #gl { background:radial-gradient(circle at 50% 52%, %%SCENE_BG%% 0%, %%GROUND%% 62%); }
+      /* the 3D canvas sits behind scene text so objects can never cover words or numbers */
+      #gl { position:absolute; left:0; top:0; width:1080px; height:1920px; z-index:24; pointer-events:none; }
+      .words { position:absolute; left:30px; width:1020px; top:290px; text-align:center; z-index:27; }
+      .big { display:block; opacity:0; text-shadow:0 8px 36px rgba(0,0,0,.85); font-size:118px; font-weight:840; letter-spacing:-.035em; line-height:1.06; white-space:nowrap; }
+      .figure { position:absolute; left:0; width:1080px; top:1082px; text-align:center; font-size:196px; font-weight:860; letter-spacing:-.045em; line-height:1; opacity:0; font-variant-numeric:tabular-nums; text-shadow:0 10px 40px rgba(0,0,0,.8); }
+      .deck { position:absolute; left:130px; top:590px; width:820px; display:flex; flex-direction:column; gap:40px; }
+      .card3d { height:194px; border-radius:36px; background:#ffffff; color:%%CAP_INK%%; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0;
+        box-shadow:0 18px 0 var(--c), 0 56px 90px rgba(0,0,0,.55); }
+      .card3d b { font-size:102px; font-weight:860; letter-spacing:-.04em; line-height:1; color:var(--c); }
+      .card3d span { font-size:44px; font-weight:700; letter-spacing:-.01em; }
+      .lockup { position:absolute; left:0; width:1080px; top:1120px; display:flex; align-items:center; justify-content:center; gap:30px; z-index:27; opacity:0; }
+      .s-gather .lockup { top:1262px; }
+      .lockup img { width:132px; height:132px; } .lockup b { font-size:112px; font-weight:840; letter-spacing:-.04em; }
+
+      /* captions */
+      .cap { position:absolute; left:0; width:1080px; top:%%CAP_TOP%%px; height:112px; display:flex; align-items:center; justify-content:center; z-index:30; }
+      .cap.take { top:1300px; }
+      /* full screen: captions sit in the shadow, a size up, so the foot of the frame has a job */
+      .cap.solo { top:1500px; }
+      .cap.solo span { font-size:64px; padding:22px 32px; }
+      .cap span { background:%%CAP_BG%%; color:%%CAP_INK%%; font-weight:780; font-size:58px; letter-spacing:-.012em; line-height:1; padding:20px 30px; border-radius:20px; white-space:nowrap; box-shadow:0 14px 40px rgba(0,0,0,.45); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="%%TOTAL%%" data-width="1080" data-height="1920">
+      <div id="stage">
+        <div class="glow" id="glow1"></div><div class="glow" id="glow2"></div>
+        <div id="floor"></div>
+        <div id="cam"><div id="pan">
+          <div class="slab d3"></div><div class="slab d2"></div><div class="slab d1"></div>
+          <div class="slab" id="win"><video id="scr" class="clip" data-start="0" data-duration="%%VOICE%%" data-track-index="1" src="assets/screen.mp4" muted playsinline></video></div>
+        </div></div>
+      </div>
+      <div id="cardshadow"></div>
+      <div id="face">
+        <div id="card"><div id="facecam" class="zoom"><video id="lower" class="clip" data-start="0" data-duration="%%VOICE%%" data-track-index="2" src="assets/lower.mp4" muted playsinline></video></div></div>
+        <div id="cutclip">%%CUTOUT%%</div>
+      </div>
+      <audio id="voice" class="clip" data-start="0" data-duration="%%VOICE%%" data-track-index="9" data-volume="1" src="assets/voice.m4a"></audio>
+      <div id="seam"></div>
+      %%SOLO%%
+      <div id="scrim" data-layout-allow-occlusion></div>
+      %%HEADLINES%%
+      %%SCENES%%
+      <canvas id="gl" width="1080" height="1920" data-layout-allow-occlusion></canvas>
+      %%CAPS%%
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#floor", { backgroundPosition: "0px 0px" }, { backgroundPosition: "0px " + Math.round(%%TOTAL%% * 36) + "px", duration: %%TOTAL%%, ease: "none" }, 0);
+      const swing = Math.max(1, Math.round(%%TOTAL%% / 9));
+      for (let i = 0; i < swing; i++) {
+        const d = %%TOTAL%% / swing, dir = i % 2 ? -1 : 1;
+        tl.to("#glow1", { x: dir > 0 ? 260 : 0, y: dir > 0 ? 220 : 0, duration: d, ease: "sine.inOut" }, i * d);
+        tl.to("#glow2", { x: dir > 0 ? -300 : 0, y: dir > 0 ? -260 : 0, duration: d, ease: "sine.inOut" }, i * d);
+      }
+      %%JS%%
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+
+      /* ---- 3D scenes: every frame is a pure function of time ---- */
+      const SCENES = %%GL%%, PALETTE = %%PALETTE%%, TONES = %%TONES%%;
+      const canvas = document.getElementById("gl");
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1); renderer.setSize(1080, 1920, false);
+      const camera = new THREE.PerspectiveCamera(34, 1080 / 1920, 0.1, 100);
+      const clamp = (v) => Math.min(1, Math.max(0, v));
+      const out3 = (v) => 1 - Math.pow(1 - clamp(v), 3);
+      const back = (v) => { v = clamp(v) - 1; return 1 + 2.7 * v * v * v + 1.7 * v * v; };
+      let seed = 7; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const mat = (c, extra) => new THREE.MeshStandardMaterial(Object.assign({ color: new THREE.Color(c), roughness: 0.42, metalness: 0.12 }, extra));
+      function wedge(from, len, outer, inner, depth, material) {
+        const s = new THREE.Shape();
+        s.absarc(0, 0, outer, from, from + len, false);
+        if (inner > 0) s.absarc(0, 0, inner, from + len, from, true); else s.lineTo(0, 0);
+        const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelSize: 0.035, bevelThickness: 0.035, bevelSegments: 3, curveSegments: 64 });
+        const m = new THREE.Mesh(g, material); m.rotation.x = -Math.PI / 2; return m;
+      }
+      function lit() {
+        const scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xffffff, new THREE.Color(TONES.scene), 0.72));
+        const key = new THREE.DirectionalLight(0xffffff, 0.62); key.position.set(3, 6, 4); scene.add(key);
+        const rim = new THREE.DirectionalLight(new THREE.Color(TONES.accent), 0.45); rim.position.set(-5, 2, -3); scene.add(rim);
+        return scene;
+      }
+      const builders = {
+        donut() {
+          const scene = lit(), group = new THREE.Group(); let a = 0;
+          const parts = [0.44, 0.28, 0.28].map((f, i) => {
+            const len = f * Math.PI * 2 - 0.07, mid = a + len / 2, holder = new THREE.Group();
+            holder.add(wedge(a, len, 2.05, 1.02, 0.66, mat(PALETTE[i % PALETTE.length]))); group.add(holder); a += f * Math.PI * 2;
+            return { holder, mid };
+          });
+          scene.add(group);
+          return { scene, draw(t) {
+            parts.forEach((p, i) => { const k = 1 - back((t - i * 0.1) / 0.8); p.holder.position.set(Math.cos(p.mid) * 3.4 * k, 2.6 * k * (i % 2 ? -1 : 1), -Math.sin(p.mid) * 3.4 * k); });
+            group.rotation.y = 0.6 + t * 0.85; group.position.y = -0.35;
+            camera.position.set(0, 6.4 - out3(t / 2) * 1.0, 11.6 - out3(t / 2.5) * 1.6); camera.lookAt(0, 0.1, 0);
+          } };
+        },
+        meter(cfg) {
+          const scene = lit(), group = new THREE.Group(), target = cfg.data.fraction;
+          const track = wedge(0, Math.PI * 2 - 0.001, 2.1, 1.36, 0.28, mat(TONES.scene));
+          group.add(track); let fill = null; scene.add(group);
+          const figure = document.getElementById("fig" + cfg.index);
+          return { scene, draw(t) {
+            const f = target * out3((t - 0.15) / 1.5);
+            if (fill) { group.remove(fill); fill.geometry.dispose(); }
+            fill = wedge(Math.PI / 2, Math.max(0.01, f * Math.PI * 2), 2.14, 1.32, 0.62, mat(PALETTE[0], { emissive: new THREE.Color(PALETTE[0]), emissiveIntensity: 0.18 }));
+            group.add(fill);
+            if (figure) figure.textContent = (f * 100).toFixed(1) + "%";
+            group.rotation.y = -0.55 + t * 0.32; group.position.y = -0.4;
+            camera.position.set(0, 8.2 - out3(t / 3) * 1.2, 10.6 - out3(t / 3) * 1.2); camera.lookAt(0, 0, 0);
+          } };
+        },
+        pie(cfg) {
+          const scene = lit(), group = new THREE.Group(), slices = cfg.data.slices;
+          const total = slices.reduce((n, s) => n + s.value, 0); let a = 0, hot = null;
+          slices.forEach((s) => {
+            const len = (s.value / total) * Math.PI * 2, holder = new THREE.Group(), mid = a + len / 2;
+            holder.add(wedge(a, Math.max(0.02, len - 0.02), 2.15, 0, s.hot ? 0.82 : 0.46, mat(s.color, s.hot ? { emissive: new THREE.Color(s.color), emissiveIntensity: 0.22 } : {})));
+            group.add(holder); if (s.hot) hot = { holder, mid }; a += len;
+          });
+          scene.add(group);
+          return { scene, draw(t) {
+            const lift = back((t - 0.5) / 0.9);
+            if (hot) hot.holder.position.set(Math.cos(hot.mid) * 0.62 * lift, 0.42 * lift, -Math.sin(hot.mid) * 0.62 * lift);
+            const facing = hot ? -Math.PI / 2 - hot.mid : 0;
+            group.rotation.y = facing - 1.5 * (1 - out3(t / 1.6)) + t * 0.07; group.position.y = -0.35;
+            group.scale.setScalar(0.35 + 0.65 * back(t / 0.7));
+            camera.position.set(0, 7.4, 10.2 - out3(t / 3) * 0.9); camera.lookAt(0, 0, 0);
+          } };
+        },
+        trash(cfg) {
+          const scene = lit(), bin = new THREE.Group();
+          const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.05, 2.3, 48, 1, true), mat(TONES.solid, { transparent: true, opacity: 0.38, side: THREE.DoubleSide }));
+          bin.add(wall);
+          [[1.35, 1.15], [1.05, -1.15]].forEach(([r, y]) => { const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.09, 16, 64), mat(TONES.solid_hi)); ring.rotation.x = Math.PI / 2; ring.position.y = y; bin.add(ring); });
+          for (let i = 0; i < 14; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.3, 0.05), mat(TONES.solid_hi)); const q = (i / 14) * Math.PI * 2; bar.position.set(Math.cos(q) * 1.2, 0, Math.sin(q) * 1.2); bar.rotation.z = Math.cos(q) * 0.13; bar.rotation.x = -Math.sin(q) * 0.13; bin.add(bar); }
+          bin.position.y = -1.5; scene.add(bin);
+          const n = cfg.count || 26, span = Math.max(1.2, cfg.end - cfg.start - 0.9);
+          const files = Array.from({ length: n }, (_, i) => {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.8, 0.08), mat(PALETTE[i % PALETTE.length])); scene.add(m);
+            return { m, x: (rand() - 0.5) * 6.2, z: (rand() - 0.5) * 2.6, y: 0.75 + rand() * 0.65, spin: (rand() - 0.5) * 7, delay: (i / n) * span };
+          });
+          return { scene, draw(t) {
+            files.forEach((f) => {
+              const p = clamp((t - f.delay) / 0.85), e = p * p;
+              f.m.position.set(f.x * (1 - out3(p)), f.y - (f.y + 2.0) * e, f.z * (1 - out3(p)));
+              f.m.rotation.set(f.spin * p * 0.5, f.spin * p, f.spin * p * 0.3 + f.x * 0.2);
+              f.m.scale.setScalar(p >= 0.98 ? 0.001 : 1 - 0.55 * e);
+            });
+            bin.rotation.y = t * 0.5; const bump = Math.sin(t * 17) * 0.025; bin.scale.set(1 + bump, 1 - bump, 1 + bump);
+            camera.position.set(0, 3.2, 12.4 - out3(t / 3) * 1.2); camera.lookAt(0, 0.1, 0);
+          } };
+        },
+        gather(cfg) {
+          // people arriving from everywhere and closing into one ring
+          const scene = lit(), world = new THREE.Group(), n = cfg.count || 14;
+          const people = Array.from({ length: n }, (_, i) => {
+            const person = new THREE.Group(), skin = mat(PALETTE[i % PALETTE.length]);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 32, 24), skin); head.position.y = 0.66;
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.34, 8, 24), skin);
+            person.add(head, body); world.add(person);
+            const q = (i / n) * Math.PI * 2, far = 5.5 + rand() * 2.5;
+            return { person, q, from: new THREE.Vector3(Math.cos(q + 1.1) * far, rand() * 4 - 1, Math.sin(q + 1.1) * far), delay: rand() * 0.55 };
+          });
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.06, 16, 120), mat(TONES.accent, { emissive: new THREE.Color(TONES.accent), emissiveIntensity: 0.4 }));
+          ring.rotation.x = Math.PI / 2; ring.position.y = -0.52; world.add(ring); scene.add(world);
+          return { scene, draw(t) {
+            people.forEach((p) => {
+              const k = out3((t - p.delay) / 1.25), home = new THREE.Vector3(Math.cos(p.q) * 2.15, 0, Math.sin(p.q) * 2.15);
+              p.person.position.lerpVectors(p.from, home, k);
+              p.person.position.y += Math.abs(Math.sin(t * 3.2 + p.q * 3)) * 0.14 * k;
+              p.person.rotation.y = -p.q; p.person.scale.setScalar(0.25 + 0.75 * k);
+            });
+            ring.scale.setScalar(Math.max(0.001, back((t - 0.8) / 0.8)));
+            world.rotation.y = t * 0.5; world.position.y = -0.35;
+            camera.position.set(0, 5.6 - out3(t / 3) * 0.7, 10.8 - out3(t / 3) * 1.2); camera.lookAt(0, 0, 0);
+          } };
+        },
+        coins(cfg) {
+          // coins dropping into three stacks: money being committed
+          const scene = lit(), world = new THREE.Group(), n = cfg.count || 18, span = Math.max(1.0, Math.min(2.2, cfg.end - cfg.start - 1.1));
+          const heights = [0, 0, 0];
+          const coins = Array.from({ length: n }, (_, i) => {
+            const stack = [1, 0, 2][i % 3], level = heights[stack]++, coin = new THREE.Group();
+            coin.add(new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.22, 56), mat(PALETTE[stack === 1 ? 0 : 2], { metalness: 0.18, roughness: 0.34, emissive: new THREE.Color(PALETTE[stack === 1 ? 0 : 2]), emissiveIntensity: 0.2 })));
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.035, 12, 56), mat(PALETTE[1])); rim.rotation.x = Math.PI / 2; rim.position.y = 0.115; coin.add(rim);
+            world.add(coin);
+            return { coin, x: (stack - 1) * 1.8, z: stack === 1 ? 0.35 : -0.25, y: -1.5 + level * 0.25 + (stack === 1 ? 0.25 : 0), spin: (rand() - 0.5) * 5, delay: (i / n) * span };
+          });
+          scene.add(world);
+          return { scene, draw(t) {
+            coins.forEach((c) => {
+              const p = clamp((t - c.delay) / 0.5), fall = p * p;
+              c.coin.visible = t >= c.delay;
+              c.coin.position.set(c.x, c.y + (1 - fall) * 0.95, c.z);
+              c.coin.rotation.set((1 - p) * c.spin, (1 - p) * c.spin * 0.6, 0);
+            });
+            world.rotation.y = -0.42 + t * 0.24; world.position.y = 0.42;
+            camera.position.set(0, 4.8 - out3(t / 3) * 0.6, 11.2 - out3(t / 3) * 1.2); camera.lookAt(0, 0, 0);
+          } };
+        },
+      };
+      const FRAMING = { donut: 1.72, meter: 1.76, pie: 1.84, trash: 1.75, gather: 1.86, coins: 1.7 };
+      const built = SCENES.map((cfg) => Object.assign({ cfg }, builders[cfg.type](cfg)));
+      function renderAt(time) {
+        const live = built.find((b) => time >= b.cfg.start && time < b.cfg.end);
+        canvas.style.display = live ? "block" : "none";
+        if (!live) return;
+        live.draw(time - live.cfg.start);
+        camera.position.multiplyScalar(FRAMING[live.cfg.type]); camera.lookAt(0, 0, 0);
+        camera.setViewOffset(1080, 1920, 0, 120, 1080, 1920);   // lift the object clear of the figure and caption
+        renderer.render(live.scene, camera);
+      }
+      window.addEventListener("hf-seek", (event) => renderAt(event.detail.time));
+      renderAt(window.__hfThreeTime || 0);
+    </script>
+  </body>
+</html>
