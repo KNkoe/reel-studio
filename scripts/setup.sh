@@ -61,9 +61,9 @@ if [ "$mode" = "--test" ]; then
     echo "  ok    $(basename "$tool")"
   done
   echo "Checking the Python scripts"
-  python3 -I - "$SCRIPTS" <<'EOF'
+  python3 -I - "$SCRIPTS" "$REPO/skills/panel-reel/three" <<'EOF'
 import ast, pathlib, sys
-for path in sorted(pathlib.Path(sys.argv[1]).glob("*.py")):
+for path in sorted(p for folder in sys.argv[1:] for p in pathlib.Path(folder).rglob("*.py")):
     ast.parse(path.read_text(), str(path))
     print("  ok   ", path.name)
 EOF
@@ -72,6 +72,11 @@ EOF
   "$BLENDER" --background --factory-startup --python-exit-code 1 --python "$SCRIPTS/studio_set.py" \
     -- "$work/room.png" "$work/room.json" >/dev/null 2>&1
   [ -s "$work/room.png" ] && echo "  ok    studio_set.py"
+  echo "Drawing the example 3D scene (downloads about 10 MB the first time)"
+  mkdir -p "$work/reel"
+  cp "$REPO/skills/panel-reel/three/example/scenes.py" "$work/reel/"
+  python3 -I "$REPO/skills/panel-reel/three/render.py" "$work/reel" --preview --every 60 >/dev/null
+  [ -s "$work/reel/work/preview/idea.jpg" ] && echo "  ok    3D toolkit"
   echo "Tests passed"
   exit 0
 fi

@@ -33,6 +33,8 @@ Downloaded on first use, then kept:
 - the cut-out model, Robust Video Matting (107 MB, GPL-3.0, from its GitHub release, checked
   against a fixed checksum) into `~/.cache/panel-reel/models/`;
 - numpy and onnxruntime through uv;
+- for 3D explainer reels, two fonts, country outlines and studio lighting (about 10 MB,
+  checked against fixed checksums) into `~/.cache/panel-reel/assets/`;
 - for split-screen reels, HyperFrames through `npx`; its page also loads GSAP and three.js
   from public CDNs, so rendering one needs a connection;
 - Apple's speech assets for on-device transcription, if macOS asks.

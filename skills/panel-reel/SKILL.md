@@ -19,12 +19,13 @@ description: >-
 else is using this repository, treat those choices as starting points: ask, and put their
 answers in `docs/PREFERENCES.md`.
 
-Two ways to finish a video, both on this Mac and free:
+Three ways to finish a video, all on this Mac and free:
 
 | What they recorded | What to run |
 |---|---|
 | Upright camera of them talking (a Clapless take or any 9:16 clip) | **Full frame**: `scripts/room_reel.py` |
 | Screen recording plus face camera | **Split screen**: `plan.json` and `scripts/build.py` |
+| Upright camera explaining something, no screen recording | **3D explainer**: follow [`three/README.md`](three/README.md) |
 
 ## Find the repo first
 
@@ -77,8 +78,10 @@ least 3.5%). `--look '{"skin": 0.7}'` changes retouch or colour. The camera may 
 recordings but must stay still within one. It assumes a roughly level camera, and that the
 whole recording is wanted: cut it first if only part is.
 
-**Not built yet:** cutting lines, captions, headlines or the screen recording together with
-this full-frame look. `build.py` still uses its own footage framing for the split screen and
+For a talk-only explanation, with cuts, captions, headlines and 3D scenes over this look,
+follow [`three/README.md`](three/README.md) and keep the project outside the repository.
+
+**Not built yet:** the screen recording together with this full-frame look. `build.py` still uses its own footage framing for the split screen and
 its older `solo` full-screen shots. Say so if asked, and offer to wire it in.
 
 ## The style rules

@@ -169,3 +169,14 @@ the author's own edits, kept so the reasons travel with the code.
 
 - Reel Studio and Clapless made public under the MIT licence, with the pages rewritten for
   readers other than the author. Third-party tools and models keep their own licences.
+
+## 2026-11-26 — talk-only recording with 3D scenes
+
+- Asked for lots of 3D animation because there was no screen recording. Built the scenes in
+  Blender (EEVEE, about 1 s a frame on an M1 Pro) with one shared kit, above the face card or
+  full screen, with the full-frame speaker between them. Compositing was a project script.
+- Checking 16 moments per rendered scene found what single stills missed: seconds of empty
+  stage, titles over photos, and photo captions that could mislabel people.
+- The 3D kit, cutter and compositor were then moved to `skills/panel-reel/three/` for reuse,
+  with a movement preview (19 scenes in about 3 minutes, against a first render that had to
+  be partly repeated). At 80% size, two test scenes rendered about 27% faster.

@@ -13,6 +13,7 @@ The video processing runs on your own Mac and needs no paid video or image API.
 | Editing skill | [`skills/panel-reel/`](skills/panel-reel/SKILL.md) | The instructions the agent follows, and the scripts it runs |
 | Full-frame look | `skills/panel-reel/scripts/room_reel.py` | Replaces your wall with a rendered studio room fitted to the camera's angle, smooths skin, touches up colour |
 | Split-screen reels | `skills/panel-reel/scripts/build.py` | Screen plus face: cuts, captions, headlines, camera moves, 3D scenes |
+| 3D explainer reels | [`skills/panel-reel/three/`](skills/panel-reel/three/README.md) | Talk-only recordings: full-frame speaker, Blender scenes above their face, captions |
 | Camera apps | [`apps/clapless`](https://github.com/KNkoe/clapless) | iPhone camera and Mac screen and mic recorder, matched without a clap |
 | Taste and rules | [`docs/PREFERENCES.md`](docs/PREFERENCES.md) | What a good edit means here. Change it to yours |
 | Why it is this way | [`docs/HISTORY.md`](docs/HISTORY.md) | What was tried, approved and rejected |
@@ -59,8 +60,8 @@ desk and speaker. Expect to adjust it for yours.
 
 - The full-frame look needs sharp, well-lit, upright footage and a roughly level camera that
   stays still during a take. It takes about 10 minutes per 30 seconds of video.
-- It does not yet cut lines, add captions or bring in the screen recording. The split-screen
-  builder does those, with its own layout.
+- On its own it does not cut lines or add captions. The 3D explainer and split-screen
+  builders do; only the split-screen one uses a screen recording.
 - Editing inside the Clapless app is not built yet.
 
 ## Privacy and cost
@@ -83,5 +84,6 @@ of people, private screen content or keys.
 The code is [MIT](LICENSE): use it, change it and share it. Tools and assets it relies on keep
 their own licences and are not covered by this one, among them the
 [Robust Video Matting](https://github.com/PeterL1n/RobustVideoMatting) model (GPL-3.0,
-downloaded on first use), Blender, ffmpeg, HyperFrames, GSAP and three.js. Check their terms
+downloaded on first use), Blender, ffmpeg, HyperFrames, GSAP, three.js, Roboto (OFL), Roboto Slab (Apache 2.0),
+Natural Earth outlines (public domain) and Poly Haven lighting (CC0). Check their terms
 before shipping them as part of something else.

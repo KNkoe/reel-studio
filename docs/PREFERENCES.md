@@ -31,6 +31,13 @@ say so.
   previews move like a mirror.
 - The screen recording is never graded.
 
+## When there is no screen recording
+
+- Explain the system with **a lot of 3D animation** (2026-11-26). Show the full face when
+  talking about other things, and their event photos where they fit.
+- 3D may be modelled in Blender or downloaded (open licence). **Check every object properly**,
+  in stills and in motion: an earlier video's crude trash can was not good enough.
+
 ## Split-screen reels
 
 - Head cut out above a rounded face card. The card is edge to edge with a 200 px top radius
