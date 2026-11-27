@@ -5,12 +5,14 @@
 //     the head cut-out: one outline, identical colours, no seam between the two layers.
 //   studio <face.mp4> <settings.json> --stills 90,600 <dir>                      (test frames)
 //
-//   room    : either a rendered studio set ("backdrop", see studio_set.py) in place of the wall,
+//   room    : either a rendered studio set ("backdrop", see studio_set.py; a still, or a video that
+//             loops) in place of the wall,
 //             or the real wall: lens blur, about a stop darker, a pool behind the head, practicals
 //   skin    : evened and smoothed (spots and shine), keeping some pore texture; eyes, brows,
 //             lips, beard and clothing are left sharp
 //   speaker : soft key light that follows the face, thin rim light on the shadow side,
 //             light denoise, local contrast and sharpening
+//   match   : puts the speaker under the colour of a rendered room's light (off unless asked)
 //   gold    : a copper-gold grade over the whole picture, rebuilt layer by layer from a
 //             Photoshop adjustment stack (see goldGrade below)
 //   finish  : gentle toe and highlight shoulder, a faint bloom and fine grain
@@ -41,8 +43,14 @@ struct Settings: Decodable {
     var gate = true          // false trusts the video outline where Apple's mask drops part of the speaker
     var relight = 1.0        // reshaping of light on the speaker; 0 keeps the light as shot (use with key and rim 0)
 
+    var match = 0.0          // how strongly the speaker takes the room's light (0 = as shot)
+    var ambient = [0.5, 0.5, 0.5]       // the room's bounce light (sRGB 0-1)
+    var windowLight = [0.9, 0.9, 0.9]   // daylight from the window side
+    var lampLight = [0.9, 0.8, 0.7]     // the lamp on the other side
+    var windowRight = false
+
     init() {}
-    enum K: String, CodingKey { case backdrop, matte, blur, wall, pool, warm, cool, practical, key, rim, bloom, grain, skin, gold, selective, relight, gate }
+    enum K: String, CodingKey { case backdrop, matte, blur, wall, pool, warm, cool, practical, key, rim, bloom, grain, skin, gold, selective, relight, gate, match, ambient, windowLight, lampLight, windowRight }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: K.self)
         func value<T: Decodable>(_ k: K, _ fallback: T) throws -> T { try c.decodeIfPresent(T.self, forKey: k) ?? fallback }
@@ -54,6 +62,9 @@ struct Settings: Decodable {
         gold = try value(.gold, gold); selective = try value(.selective, selective)
         relight = try value(.relight, relight)
         gate = try value(.gate, gate)
+        match = try value(.match, match); ambient = try value(.ambient, ambient)
+        windowLight = try value(.windowLight, windowLight); lampLight = try value(.lampLight, lampLight)
+        windowRight = try value(.windowRight, windowRight)
     }
 }
 
@@ -245,6 +256,56 @@ static float softLight(float base, float top) {                       // Photosh
     return float4(toCode(mix(lit, skin, m)), 1.0);
 }
 
+// Puts the speaker under the room's light: bounce colour in the shadows and the clothes, less
+// light low down, a soft edge from the window on one side and the lamp on the other, and a little
+// of the room wrapping round the outline. Only colour and level change; nothing is redrawn.
+static float3 hue(float3 c) { return c / max(dot(c, float3(0.2126, 0.7152, 0.0722)), 0.001); }
+[[ stitchable ]] float4 roomLight(coreimage::sample_t image, coreimage::sample_t matte, coreimage::sample_t fromLeft,
+                                  coreimage::sample_t fromRight, coreimage::sample_t body, coreimage::sample_t spill,
+                                  float2 face, float faceSize, float3 ambient, float3 leftColour, float3 rightColour,
+                                  float amount, coreimage::destination dest) {
+    float m = clamp(matte.r, 0.0, 1.0);
+    if (m < 0.002 || amount <= 0.0) return image;
+    float2 p = dest.coord();
+    float3 c = toLinear(image.rgb);
+    float3 was = c;
+    float luma = dot(c, float3(0.2126, 0.7152, 0.0722));
+    float high = max(image.r, max(image.g, image.b)), low = min(image.r, min(image.g, image.b));
+    float pale = (1.0 - smoothstep(0.10, 0.32, (high - low) / max(high, 0.001))) * smoothstep(0.25, 0.55, high);
+    float onFace = blob(p, face, float2(faceSize * 0.78, faceSize * 0.95));
+    float3 air = hue(toLinear(ambient));
+    float3 l = hue(toLinear(leftColour)), r = hue(toLinear(rightColour));
+
+    // bounce light: strongest in the shadows and on pale cloth, gentlest on the lit face
+    float shadow = 1.0 - smoothstep(0.02, 0.42, luma);
+    float tint = mix(0.26, 0.52, shadow);
+    tint = mix(tint, 0.52, pale);
+    tint *= 1.0 - 0.42 * onFace;
+    c *= mix(float3(1.0), air, tint * amount);
+
+    // each side takes the colour of the light on that side
+    float across = (p.x - face.x) / faceSize;
+    float onLeft = smoothstep(0.0, 1.1, -across), onRight = smoothstep(0.0, 1.1, across);
+    c *= mix(float3(1.0), l, 0.34 * onLeft * amount);
+    c *= mix(float3(1.0), r, 0.30 * onRight * amount);
+
+    // a room this dim cannot light the clothes as brightly as the face
+    float lower = smoothstep(face.y - faceSize * 0.55, face.y - faceSize * 1.9, p.y);
+    c *= 1.0 - amount * (0.08 + 0.30 * lower + 0.10 * max(onLeft, onRight));
+    c *= 1.0 - amount * 0.20 * pale * smoothstep(0.35, 0.85, luma);
+    c = mix(c, c * c * (3.0 - 2.0 * min(c, 1.0)), 0.10 * amount * (1.0 - onFace));
+
+    // edge light, and the room wrapping round the outline
+    float leftEdge = clamp(m - fromLeft.r, 0.0, 1.0), rightEdge = clamp(m - fromRight.r, 0.0, 1.0);
+    float catching = 0.020 + 0.50 * dot(was, float3(0.2126, 0.7152, 0.0722));
+    c += amount * catching * (l * leftEdge * 0.45 + r * rightEdge * 0.45) * (1.0 - 0.45 * lower);
+    float wrap = clamp((1.0 - body.r) * 1.4, 0.0, 1.0);
+    float3 room = min(toLinear(spill.rgb), float3(0.20));
+    c = mix(c, 1.0 - (1.0 - c) * (1.0 - room), wrap * 0.16 * amount * lower);
+
+    return float4(mix(image.rgb, toCode(c), m), 1.0);
+}
+
 // Filmic finish in display space: deeper toe, soft shoulder (keeps pale clothing from clipping).
 static float curve(float x) {
     x = clamp(x, 0.0, 1.0);
@@ -320,6 +381,7 @@ func colour(_ name: String) -> CIColorKernel {
 let plate = colour("plate"), light = colour("light"), finish = colour("finish")
 let skinWeight = colour("skinWeight"), weighted = colour("weighted"), retouch = colour("retouch")
 let goldGrade = colour("goldGrade")
+let roomLight = colour("roomLight")
 guard let bilateral = kernels.first(where: { $0.name == "bilateral" }) else { fail("missing kernel bilateral") }
 
 // No colour management: the kernels work on the video's own code values, so nothing shifts on the way through.
@@ -371,16 +433,41 @@ var faceSize = Double(width) * 0.36
 var haveFace = false
 var count = 0, empty = 0
 
-var backdrop = CIImage(color: CIColor.black).cropped(to: frame)
-if !settings.backdrop.isEmpty {
-    guard let picture = CIImage(contentsOf: URL(fileURLWithPath: settings.backdrop), options: [.colorSpace: NSNull()])
-    else { fail("cannot read the backdrop \(settings.backdrop)") }
-    // fill the frame, keeping the picture's shape, centred
+// fill the frame, keeping the picture's shape, centred
+func filling(_ picture: CIImage) -> CIImage {
     let scale = max(size.width / picture.extent.width, size.height / picture.extent.height)
     let fitted = picture.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-    backdrop = fitted.transformed(by: CGAffineTransform(translationX: (size.width - fitted.extent.width) / 2 - fitted.extent.minX,
-                                                        y: (size.height - fitted.extent.height) / 2 - fitted.extent.minY))
+    return fitted.transformed(by: CGAffineTransform(translationX: (size.width - fitted.extent.width) / 2 - fitted.extent.minX,
+                                                    y: (size.height - fitted.extent.height) / 2 - fitted.extent.minY))
         .cropped(to: frame)
+}
+
+// A backdrop that is a video moves: it is read frame for frame and starts again when it ends.
+let moving = ["mp4", "mov"].contains((settings.backdrop as NSString).pathExtension.lowercased())
+var loopTrack: AVAssetTrack? = nil
+var loopReader: AVAssetReader? = nil
+var loopOutput: AVAssetReaderTrackOutput? = nil
+let loopAsset = AVURLAsset(url: URL(fileURLWithPath: settings.backdrop))
+if moving { loopTrack = try await loopAsset.loadTracks(withMediaType: .video).first }
+func nextLoopFrame() -> CVPixelBuffer {
+    for _ in 0..<2 {
+        if let o = loopOutput, let s = o.copyNextSampleBuffer(), let b = CMSampleBufferGetImageBuffer(s) { return b }
+        guard let t = loopTrack, let r = try? AVAssetReader(asset: loopAsset) else { break }
+        let o = AVAssetReaderTrackOutput(track: t, outputSettings:
+            [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
+        r.add(o)
+        r.startReading()
+        loopReader = r
+        loopOutput = o
+    }
+    fail("cannot read the backdrop \(settings.backdrop)")
+}
+
+var backdrop = CIImage(color: CIColor.black).cropped(to: frame)
+if !settings.backdrop.isEmpty && !moving {
+    guard let picture = CIImage(contentsOf: URL(fileURLWithPath: settings.backdrop), options: [.colorSpace: NSNull()])
+    else { fail("cannot read the backdrop \(settings.backdrop)") }
+    backdrop = filling(picture)
 }
 
 while let sample = output.copyNextSampleBuffer() {
@@ -390,6 +477,8 @@ while let sample = output.copyNextSampleBuffer() {
         outlineSample = o.copyNextSampleBuffer()
         if outlineSample == nil { fail("the outline video ends before the footage, at frame \(count)") }
     }
+    var loopFrame: CVPixelBuffer? = nil
+    if moving { loopFrame = nextLoopFrame() }     // read even for skipped frames, so time stays right
     if !stills.isEmpty && !stills.contains(count) {
         if count > stills.max()! { break }
         continue
@@ -414,6 +503,7 @@ while let sample = output.copyNextSampleBuffer() {
         }
 
         let image = CIImage(cvPixelBuffer: buffer)
+        if let b = loopFrame { backdrop = filling(CIImage(cvPixelBuffer: b, options: [.colorSpace: NSNull()])) }
         func sized(_ picture: CIImage) -> CIImage {
             picture.transformed(by: CGAffineTransform(scaleX: size.width / picture.extent.width,
                                                       y: size.height / picture.extent.height)).cropped(to: frame)
@@ -519,8 +609,21 @@ while let sample = output.copyNextSampleBuffer() {
             CIVector(x: settings.cool[0], y: settings.cool[1], z: settings.cool[2]),
             settings.practical, settings.key, settings.rim, settings.relight])!
         let graded = goldGrade.apply(extent: frame, arguments: [lit, settings.gold, settings.selective])!
+        var placed = graded
+        if settings.match > 0 {
+            func rgb(_ v: [Double]) -> CIVector { CIVector(x: v[0], y: v[1], z: v[2]) }
+            let edge = blurred(steady, 9.0).clampedToExtent()
+            let fromLeft = edge.transformed(by: CGAffineTransform(translationX: 22, y: -7)).cropped(to: frame)
+            let fromRight = edge.transformed(by: CGAffineTransform(translationX: -22, y: -7)).cropped(to: frame)
+            placed = roomLight.apply(extent: frame, arguments: [
+                graded, matte, fromLeft, fromRight, blurred(steady, 16.0),
+                blurred(settings.backdrop.isEmpty ? image : backdrop, 44),
+                CIVector(x: faceCentre.x, y: faceCentre.y), faceSize, rgb(settings.ambient),
+                rgb(settings.windowRight ? settings.lampLight : settings.windowLight),
+                rgb(settings.windowRight ? settings.windowLight : settings.lampLight), settings.match])!
+        }
         let final = finish.apply(extent: frame, arguments: [
-            graded, blurred(graded, 20), settings.bloom, settings.grain, Double(count % 97)])!
+            placed, blurred(placed, 20), settings.bloom, settings.grain, Double(count % 97)])!
 
         context.render(final, toBitmap: &rendered, rowBytes: width * 4, bounds: frame, format: .BGRA8, colorSpace: nil)
         context.render(matte, toBitmap: &maskBytes, rowBytes: width * 4, bounds: frame, format: .BGRA8, colorSpace: nil)

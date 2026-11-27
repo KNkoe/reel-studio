@@ -42,6 +42,7 @@ WALL_H = 4.8 if TALL else 2.8
 SAMPLES = options.get("samples", 220)
 FSTOP = options.get("fstop", 4.2)              # lower is blurrier
 LIGHT = options.get("light", 1.0)              # overall strength of the practicals
+SWAP = options.get("swap", {})                 # recolouring: a colour written below -> the colour to use
 rng = random.Random(options.get("seed", 7))
 # Fitting the room to the footage: which side the window is on, the camera's roll, how fast the
 # table recedes and where its things stand. The defaults give the room exactly as approved.
@@ -55,6 +56,7 @@ scene = bpy.context.scene
 
 
 def linear(hex_colour):
+    hex_colour = SWAP.get(hex_colour, hex_colour)
     out = []
     for i in (1, 3, 5):
         c = int(hex_colour[i:i + 2], 16) / 255
@@ -173,7 +175,7 @@ class Wall:
 
 window = Wall((-0.967, 2.50))                            # left
 side = Wall(TABLE_TOWARD)                               # right, carries the table
-LOW, HIGH = -1.6, WALL_H - 0.9
+LOW, HIGH = -3.2, WALL_H - 0.9
 
 side.box((-0.05, 3.2), (-0.05, 0.0), (LOW, HIGH), plaster, 0)
 

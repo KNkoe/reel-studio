@@ -1,13 +1,19 @@
 """One upright recording in, a full-frame video with the studio room behind the speaker out.
 
     python3 -I room_reel.py <take folder or video> <project dir> [--preview 2,12,24]
-        [--window right|left] [--trim 0.035] [--look '{"skin": 0.7}']
+        [--window right|left] [--trim 0.035] [--look '{"skin": 0.7}'] [--room style.json]
 
 Steps, all on this machine: measure the camera's angle from this recording (probe.swift,
 fit_room.py), render the room to match (Blender), cut the speaker out (Robust Video Matting),
 smooth the skin with a light colour touch and no relighting (studio.swift), then scan the result
 for pieces of the speaker that blink in and out. Every recording is fitted afresh, so the camera
 may move between recordings, but not during one. Renders are numbered; none is overwritten.
+A room style file recolours the room and lights the speaker to match:
+{"swap": {"#6b5d55": "#494a4c"}, "look": {"match": 1.0, "ambient": [r, g, b],
+"windowLight": [r, g, b], "lampLight": [r, g, b]}}, where "swap" names colours in studio_set.py.
+It may also name your own room and make it move: "set": a Blender script used in place of
+studio_set.py (same arguments), "animate": a script run as `animate.py <backdrop.png> <loop.mp4>`
+(Python with numpy and Pillow) whose looping video then plays behind the speaker.
 The sound is the recording's own, copied unchanged.
 """
 import argparse
@@ -27,7 +33,7 @@ LOOK = {"key": 0.0, "rim": 0.0, "relight": 0.0, "bloom": 0.03, "grain": 0.6, "sk
         "gold": 0.25, "selective": 0.1, "gate": False}
 MODEL_SHA = "25db300fcb6ee27f941a1b52c97856e8d1f13c7f35817f81a612f89af0e8a85c"
 # pinned so another machine renders the same way
-PYTHON, PINS = "3.13", {"numpy": "2.5.5", "onnxruntime": "1.32.0"}
+PYTHON, PINS = "3.13", {"numpy": "2.5.5", "onnxruntime": "1.32.0", "pillow": "12.0.0"}
 TAGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 
 
@@ -78,7 +84,9 @@ def main():
     parser.add_argument("--window", choices=("right", "left"), help="override the side chosen from the recording")
     parser.add_argument("--trim", type=float, help="share of the height cut from the bottom (default: from the table)")
     parser.add_argument("--look", default="{}", help="JSON that overrides the skin and colour settings")
+    parser.add_argument("--room", help="JSON file with the room's colours (swap) and the matching light (look)")
     options = parser.parse_args()
+    style = json.loads(Path(options.room).expanduser().read_text()) if options.room else {}
 
     source = Path(options.source).expanduser().resolve()
     if source.is_dir():
@@ -113,13 +121,25 @@ def main():
     run("ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", "540x960", "-i",
         probe / "check.raw", "-frames:v", "1", work / "angle-check.png")
 
+    if style.get("swap"):
+        room.write_text(json.dumps({**json.loads(room.read_text()), "swap": style["swap"]}, indent=1))
     print("rendering the room (about a minute)", flush=True)
     backdrop = work / "backdrop.png"
-    run(blender, "--background", "--factory-startup", "--python-exit-code", "1", "--python", HERE / "studio_set.py",
-        "--", backdrop, room, stdout=subprocess.DEVNULL)
+    own = {name: Path(style[name]).expanduser().resolve() for name in ("set", "animate") if style.get(name)}
+    for name, script in own.items():
+        if not script.is_file():
+            raise SystemExit(f"no {name} script named by the room style: {script}")
+    run(blender, "--background", "--factory-startup", "--python-exit-code", "1", "--python",
+        own.get("set", HERE / "studio_set.py"), "--", backdrop, room, stdout=subprocess.DEVNULL)
     fitted = json.loads(room.read_text())
     trim = options.trim if options.trim is not None else round(min(max(1 - fitted["table_top"], 0.035), 0.08), 3)
-    look = {**LOOK, **json.loads(options.look), "backdrop": str(backdrop)}
+    if "animate" in own:
+        print("making the background move", flush=True)
+        moving = work / "backdrop.mp4"
+        uv(own["animate"], backdrop, moving, extra=("pillow",))
+        backdrop = moving
+    look = {**LOOK, **style.get("look", {}), **json.loads(options.look), "backdrop": str(backdrop),
+            "windowRight": bool(fitted.get("mirror", False))}
     settings = work / "studio.json"
 
     if options.preview:

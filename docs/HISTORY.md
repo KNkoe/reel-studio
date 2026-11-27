@@ -191,3 +191,19 @@ the author's own edits, kept so the reasons travel with the code.
   history. The talk-only cutter stays, as `scripts/cut.py`.
 - With no card scenes by default, a screen reel without a closing card showed a blank screen and
   no speaker after the voice. It now ends with the voice (checked on synthetic footage).
+
+## 2026-11-27 — screen recordings follow the private style
+
+- The creator found a 3D screen stage does not fit their style, so their screen recordings now
+  follow the private style too. The split-screen build stays for others.
+- The cutter now cuts a take's screen recording at the same moments as the voice, accepts a
+  single video in place of a take, and crops other shapes to 9:16 instead of stretching them
+  (screen cutting tried on one take and on synthetic footage; a single video on synthetic footage).
+
+## 2026-11-27 — the room can be recoloured
+
+- `room_reel.py --room` takes a style file that swaps the room's colours and puts the speaker
+  under the same light (tinted shadows and clothes, edge light from window and lamp). Without it
+  nothing changes, except that the walls now reach lower, hiding a pale patch under the window.
+- A style file can also name its own room script and an animation script, and the room tool can
+  play a looping video behind the speaker (tried on a 10 s clip).

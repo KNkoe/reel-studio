@@ -38,7 +38,9 @@ Set on 2026-11-27.
 - **Three views.** Split (visuals above, speaker below) most of the video. Full face now and
   then, when not explaining something with visuals. Visuals only, with no speaker, only when
   a point is really being stressed, and not often.
-- **Interfaces keep the 3D feel.**
+- **Screen recordings** follow the private style below too (changed 2026-11-27, replacing a
+  rule that interfaces keep a 3D feel). The split-screen build's 3D stage is not used for
+  their videos unless asked for.
 - **Visuals made for a video** (explainers and similar screens) follow a style the creator
   keeps private, outside this repository. Do not add it, or a description of it, here.
 - **Keep the 3D room** behind the speaker, fitted to the camera's angle.
@@ -46,6 +48,8 @@ Set on 2026-11-27.
 - **Check every object properly**, in stills and in motion.
 
 ## Split-screen reels
+
+Rules for the split-screen build.
 
 - Head cut out above a rounded face card. The card is edge to edge with a 200 px top radius
   so the curve survives TikTok's side crop. **No space at the sides.** Important text stays

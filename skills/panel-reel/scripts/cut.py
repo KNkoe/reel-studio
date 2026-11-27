@@ -8,7 +8,8 @@ reel.json "cut": {"take": "sources/take-main", "keep": [["name", in, out], ...],
 Times are the microphone's. A pause longer than "long" inside a range keeps "leave" seconds on
 each side; "tail" is how long the last picture is held. Writes work/edl.json,
 work/words_edit.json, work/face_cut.mp4 and work/voice.wav. A take is a Clapless folder
-(camera.mov, mic.m4a, take.json).
+(camera.mov, mic.m4a, take.json) or a single video file with its own sound. A Clapless take
+with a screen recording (screen.mp4) also gets work/screen_cut.mp4, cut at the same moments.
 """
 import argparse
 import json
@@ -64,6 +65,26 @@ def edit_words(segs, words):
     return timed
 
 
+def cut_screen(screen, work, segs):
+    """The screen recording cut like the voice. It starts with the microphone, so times match."""
+    steady, out = work / "screen_steady.mp4", work / "cut"
+    if not steady.exists() or steady.stat().st_mtime < screen.stat().st_mtime:
+        partial = work / "screen_steady.partial.mp4"       # a still screen records few frames
+        ffmpeg("-i", screen, "-an", "-vf", f"fps={FPS}:start_time=0", "-c:v", "libx264", "-crf", "12", "-preset",
+               "veryfast", "-g", FPS, "-pix_fmt", "yuv420p", *TAGS, partial)
+        partial.replace(steady)
+    length = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                                   str(steady)], capture_output=True, text=True, check=True).stdout)
+    for s in segs:
+        ffmpeg("-ss", f"{max(0.0, min(s['in'], length - 0.1)):.4f}", "-i", steady, "-an", "-vf",
+               f"tpad=stop_mode=clone:stop_duration={s['dur'] + 1:.3f}", "-frames:v", s["frames"], "-c:v", "libx264",
+               "-crf", "12", "-preset", "veryfast", "-g", FPS, "-pix_fmt", "yuv420p", *TAGS,
+               out / f"{s['id']}_screen.mp4")
+    listing = out / "screen.txt"
+    listing.write_text("".join(f"file '{s['id']}_screen.mp4'\n" for s in segs))
+    ffmpeg("-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", work / "screen_cut.mp4")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("project", type=Path)
@@ -75,9 +96,12 @@ def main():
     work = project / "work"
     work.mkdir(exist_ok=True)
     take = project / settings["take"]
+    if not take.exists():
+        raise SystemExit(f"no take at {take}")
+    single = take.is_file()
     mic, words_file = work / "mic_main.wav", work / "words_main.json"
     if not mic.exists():      # keeps the microphone's small start delay
-        ffmpeg("-i", take / "mic.m4a", "-af", f"aresample={RATE}:async=1:first_pts=0", "-ac", "1", mic)
+        ffmpeg("-i", take if single else take / "mic.m4a", "-vn", "-af", f"aresample={RATE}:async=1:first_pts=0", "-ac", "1", mic)
     if not words_file.exists():
         binary, small = work / "transcribe", work / "a16.wav"
         subprocess.run(["swiftc", "-O", str(SCRIPTS / "transcribe.swift"), "-o", str(binary)], check=True)
@@ -95,16 +119,20 @@ def main():
         print(f"  {mine[0]['start']:7.2f}-{mine[-1]['start'] + mine[-1]['dur']:7.2f}  {name}")
     if options.plan:
         return
-    sync = json.loads((take / "take.json").read_text())["sync"]
-    if not sync.get("matchedBySound"):
-        raise SystemExit("this take's camera and microphone were not matched by sound: do not edit it on a guess")
-    offset, drift = sync["videoOffset"], sync["videoDrift"]
+    if single:
+        picture, offset, drift = take, 0.0, 0.0
+    else:
+        sync = json.loads((take / "take.json").read_text())["sync"]
+        if not sync.get("matchedBySound"):
+            raise SystemExit("this take's camera and microphone were not matched by sound: do not edit it on a guess")
+        picture, offset, drift = take / "camera.mov", sync["videoOffset"], sync["videoDrift"]
     out = work / "cut"
     out.mkdir(exist_ok=True)
     for s in segs:
         camera = s["in"] + offset + drift * s["in"]
-        ffmpeg("-hwaccel", "videotoolbox", "-ss", f"{camera:.4f}", "-t", s["dur"] + 0.5, "-i", take / "camera.mov",
-               "-an", "-vf", f"scale=1080:1920:flags=lanczos,fps={FPS},tpad=stop_mode=clone:stop_duration=1,setsar=1",
+        ffmpeg("-hwaccel", "videotoolbox", "-ss", f"{camera:.4f}", "-t", s["dur"] + 0.5, "-i", picture,
+               "-an", "-vf", "scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,"
+                             f"fps={FPS},tpad=stop_mode=clone:stop_duration=1,setsar=1",
                "-frames:v", s["frames"], "-c:v", "libx264", "-crf", "10", "-preset", "fast", "-pix_fmt", "yuv420p",
                *TAGS, out / f"{s['id']}.mp4")
         samples = s["frames"] * RATE // FPS
@@ -115,6 +143,11 @@ def main():
         listing = out / f"{ext}.txt"
         listing.write_text("".join(f"file '{s['id']}.{ext}'\n" for s in segs))
         ffmpeg("-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", work / name)
+    if not single and (take / "screen.mp4").exists():
+        cut_screen(take / "screen.mp4", work, segs)
+        print("screen cut:", work / "screen_cut.mp4")
+    else:
+        (work / "screen_cut.mp4").unlink(missing_ok=True)
     clean = "aformat=channel_layouts=stereo,highpass=f=75"
     target = "loudnorm=I=-14:TP=-1.5:LRA=11"
     first = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(work / "voice_raw.wav"), "-af",

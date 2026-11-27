@@ -1,17 +1,16 @@
 ---
 name: panel-reel
 description: >-
-  The creator's saved video style. Full-frame shots of the speaker in a rendered corner room
-  fitted to each recording's camera angle, smooth skin and a light colour touch; and the
-  split-screen reel (3D screen stage with camera moves, head cut out above a rounded face
-  card, big short-lived headlines, never small labels or badges, fonts matched to the
-  interface on screen), plus the rules for which view and which look to use. Interfaces keep
-  a 3D feel; explainer visuals use a separate private skill. Use whenever asked to edit a video "in the
-  same style", "in my style", "like the last reel", to change or remove the background, or
-  to edit a Clapless take, a ScreenKite recording (.skbundle), a screen recording with a
-  talking head, a product demo or an app walkthrough, including from a brand-new thread,
-  even if no style is mentioned. Also use when asked to set up, start or stop recording
-  their iPhone camera and Mac screen. Not for copying the style of a new reference video.
+  Reel Studio's video tools: full-frame shots of the speaker in a rendered corner room fitted
+  to each recording's camera angle, smooth skin and a light colour touch; cutting; blurring
+  private text; Clapless recording; and a split-screen reel build (3D screen stage, head cut
+  out above a face card, big short-lived headlines). If a `reel` skill is installed, that is
+  the creator's own workflow: for their videos use `reel`, which calls these tools. Use this
+  one to change or remove a background, to set up, start or stop recording their iPhone camera
+  and Mac screen, for the split-screen build when asked for by name, or, where there is no
+  `reel` skill, to edit a Clapless take, a ScreenKite recording (.skbundle), a screen
+  recording with a talking head, a product demo or an app walkthrough. Not for copying the
+  style of a new reference video.
 ---
 
 # panel-reel: the creator's saved style
@@ -27,21 +26,14 @@ Two ways to finish a video here, both on this Mac and free:
 | Upright camera of them talking (a Clapless take or any 9:16 clip) | **Full frame**: `scripts/room_reel.py` |
 | Screen recording plus face camera | **Split screen**: `plan.json` and `scripts/build.py` |
 
-For a recording of them explaining something with no screen recording, also read "Which look
-for what": the visuals for it come from outside this repository.
+## The creator's own videos
 
-## Which look for what
-
-| On screen | Look |
-|---|---|
-| **A real interface**: an app or site they recorded | **Keep the 3D feel**: the split-screen build, the screen moving in 3D |
-| **Anything made for the video**: explanations, lists, numbers, diagrams, their photos, end cards | Their **private explainer style** |
-| Behind the speaker | The fitted 3D room |
-
-The creator keeps the explainer style to themselves, so it is not in this repository. If a
-`reel-explainer` skill is installed, read it and use it for those visuals. If it is not, ask
-what they should look like. Either way do not make up a style, fall back to the built-in 3D
-card scenes, or add anything about the private style to this repository.
+Their whole workflow, screen recordings included, is a private skill called `reel`. When it
+is installed and the video is theirs, read it and follow it; it uses the tools described here
+(room, cutter, blur, Clapless). The split-screen build and its 3D screen stage are no longer
+their choice (2026-11-27): use them when asked for by name, or for someone without a `reel`
+skill. Their style stays private: do not add anything about it to this repository, and where
+the skill is missing, ask what graphics should look like instead of making a style up.
 
 ## The three views
 
@@ -105,14 +97,17 @@ python3 -I "$SKILL/scripts/room_reel.py" <take folder or video> "$PROJECTS/<slug
 
 It outputs `room-vN.mp4` (1080×1920, 30 fps, the recording's own sound) and never overwrites.
 `--trim 0.035` sets the strip cut from the bottom (default: sized to the real table edge, at
-least 3.5%). `--look '{"skin": 0.7}'` changes retouch or colour. The camera may move between
+least 3.5%). `--look '{"skin": 0.7}'` changes retouch or colour. `--room style.json` recolours the room and lights
+the speaker to match it, and can bring your own room script and moving background (format at the
+top of the script); without it the room is as approved. The camera may move between
 recordings but must stay still within one. It assumes a roughly level camera, and that the
 whole recording is wanted: cut it first if only part is.
 
-For a talk-only recording, `python3 -I "$SKILL/scripts/cut.py" <project> --plan` transcribes
-on this Mac, and the same command without `--plan` cuts the ranges listed in the project's
-`reel.json` (see the top of the script). Render the room from `work/face_cut.mp4`, keep the project outside the
-repository, and take the visuals, captions and assembly from the explainer skill.
+To cut a take first, `python3 -I "$SKILL/scripts/cut.py" <project> --plan` transcribes on this
+Mac, and the same command without `--plan` cuts the ranges listed in the project's `reel.json`
+(see the top of the script). It also cuts a take's screen recording at the same moments, and
+accepts a single video in place of a take. Render the room from `work/face_cut.mp4` and keep
+the project outside the repository. Graphics, captions and assembly are not part of this skill.
 
 **Not built yet:** the screen recording together with this full-frame look. `build.py` still
 uses its own footage framing for the split screen and its older `solo` full-screen shots. Say
@@ -157,7 +152,7 @@ These came from the creator reviewing real edits. `build.py` enforces most of th
      3–8 seconds, with push-ins on the exact button, number or row being discussed;
    - the face punches in when big text lands and breathes slowly otherwise
      (automatic).
-   The 3D is for the interface. Visuals made for the video follow "Which look for what".
+   These rules are for this build. The creator's own videos follow their `reel` skill.
 6. **Fonts match the interface in every video.** Find proof, never guess: the app's
    source CSS or font config, its app bundle, or the live site's computed
    `font-family`. A Mac app using `-apple-system` means SF Pro
@@ -334,7 +329,7 @@ Generate it from a small `make_plan.py` in the project so revisions stay readabl
 - `*word*` colours a word with the accent.
 
 `scenes` takes the built-in 3D card scenes below. They are visuals made for the video, so
-leave the list empty unless the creator asks for them (see "Which look for what"). An entry
+leave the list empty unless the creator asks for them (see "The creator's own videos"). An entry
 looks like `{"type": "donut", "from": "a3", "lines": ["It has AI", "*built in.*"], "logo": "App name"}`;
 `"end_card": true` instead of `from` makes it the closing card. `tail` is the time that card
 holds after the voice; without a closing card the video ends with the voice, so give the last
