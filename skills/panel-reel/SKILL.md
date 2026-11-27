@@ -86,7 +86,10 @@ python3 -I "$SKILL/scripts/room_reel.py" <take folder or video> "$PROJECTS/<slug
    `angle-check.png`: its white lines must lie on real upright edges and on the real table
    edge. If the room sits wrong, say what was measured and adjust `--window right|left` or
    edit `fit_room.py`; do not hand-place a room that ignores the recording.
-2. **Render** (roughly 10 minutes per 30 seconds of footage on an M1 Pro) in the background.
+2. **Render** in the background. The speaker is cut out and the room rendered at the same time,
+   a few seconds apart (`--one-at-a-time` turns that off and needs a little less memory). On an
+   M1 Pro a 30 s clip took about 4 minutes for those two steps and the checks, after about 2 minutes
+   of setting up the room. A cut made by `cut.py` is used as it is, without converting it again.
    Every recording is measured afresh: roll from upright edges, table slope, eye height and
    the side the light comes from. What cannot be seen falls back to the approved room, and
    the report says so: pass that on.

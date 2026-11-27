@@ -207,3 +207,19 @@ the author's own edits, kept so the reasons travel with the code.
   nothing changes, except that the walls now reach lower, hiding a pale patch under the window.
 - A style file can also name its own room script and an animation script, and the room tool can
   play a looping video behind the speaker (tried on a 10 s clip).
+
+## 2026-11-27 — a faster room render at the same settings
+
+- The cut-out and the room render now run together: the cut-out writes 10-second parts and the
+  room renderer follows. On a 30 s clip on an M1 Pro those steps and the flicker check took 239 s
+  instead of 317 s. Not yet timed on a long video.
+- A recording that is already upright 1080x1920, 30 fps, BT.709 H.264 is no longer converted
+  again (this took 5 minutes on a 6-minute cut and cost a little quality).
+- The flicker scan reads a few seconds at a time instead of both whole videos; it reported the
+  same frames as before on two pairs.
+- Found by comparing frames: the first version of the parts made macOS read one extra frame from
+  the first part, so the outline ran a frame behind the whole way, and the parts did not split on
+  time. With both fixed, parts and the finished outline gave identical frames, 900 of 900.
+- Against the old tool the result differs slightly (the input is no longer converted first). A
+  dark gap under the arm, which the old cut-out already switched between person and wall, now
+  switches on slightly different frames.

@@ -26,7 +26,8 @@ import Vision
 
 struct Settings: Decodable {
     var backdrop = ""        // image that replaces the wall behind the speaker; empty keeps the real room
-    var matte = ""           // grey video of the speaker's outline (rvm_matte.py); empty uses Apple's per-frame mask
+    var matte = ""           // grey video of the speaker's outline (rvm_matte.py), or the ".csv" list of its parts
+                             // while it is still being made; empty uses Apple's per-frame mask
     var blur = 11.0          // background lens blur radius, px
     var wall = 0.36          // background exposure in linear light (1 = untouched)
     var pool = 0.85          // extra light on the wall behind the head
@@ -352,11 +353,14 @@ let output = AVAssetReaderTrackOutput(track: track, outputSettings:
 reader.add(output)
 reader.startReading()
 
-// An outline made beforehand is read frame for frame alongside the footage.
+// The outline is read frame for frame alongside the footage. It is either one finished video, or a
+// list of parts that rvm_matte.py is still adding to: then wait for each part as it is needed.
 var matteReader: AVAssetReader? = nil
 var matteOutput: AVAssetReaderTrackOutput? = nil
-if !settings.matte.isEmpty {
-    let outline = AVURLAsset(url: URL(fileURLWithPath: settings.matte))
+let inParts = settings.matte.hasSuffix(".csv")
+var partsOpened = 0
+func openOutline(_ url: URL) async throws {
+    let outline = AVURLAsset(url: url)
     let outlineTrack = try await outline.loadTracks(withMediaType: .video)[0]
     let outlineSize = try await outlineTrack.load(.naturalSize)
     guard outlineSize == size else { fail("the outline video is \(outlineSize), the footage is \(size)") }
@@ -368,7 +372,36 @@ if !settings.matte.isEmpty {
     matteReader = r
     matteOutput = o
 }
-let given = matteOutput != nil
+func openNextPart() async throws -> Bool {
+    let list = URL(fileURLWithPath: settings.matte)
+    let ended = list.appendingPathExtension("done")       // written once no more parts will come
+    var waited = 0.0
+    while true {
+        let finished = FileManager.default.fileExists(atPath: ended.path)    // look before reading the list
+        let text = (try? String(contentsOf: list, encoding: .utf8)) ?? ""
+        let lines = text.components(separatedBy: "\n").dropLast()           // only whole lines
+        if partsOpened < lines.count {
+            let name = String(lines[lines.startIndex + partsOpened].split(separator: ",")[0])
+            try await openOutline(list.deletingLastPathComponent().appendingPathComponent(name))
+            partsOpened += 1
+            return true
+        }
+        if finished { return false }
+        if waited > 900 { fail("no new outline for 15 minutes: has the cut-out stopped?") }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        waited += 0.3
+    }
+}
+func nextOutline() async throws -> CMSampleBuffer? {
+    while true {
+        if let sample = matteOutput?.copyNextSampleBuffer() { return sample }
+        if let r = matteReader, r.status == .failed { fail("cannot read the outline: \(String(describing: r.error))") }
+        if !inParts { return nil }
+        if try await !openNextPart() { return nil }
+    }
+}
+if !settings.matte.isEmpty && !inParts { try await openOutline(URL(fileURLWithPath: settings.matte)) }
+let given = !settings.matte.isEmpty
 let gateReach = 14.0     // px the video outline may reach past the per-frame mask
 let bodyMargin = 22.0    // px around the video outline's solid body where it alone decides the edge
 let deepInside = 9.0     // px inside the per-frame mask that are always the speaker
@@ -473,8 +506,8 @@ if !settings.backdrop.isEmpty && !moving {
 while let sample = output.copyNextSampleBuffer() {
     defer { count += 1 }
     var outlineSample: CMSampleBuffer? = nil
-    if let o = matteOutput {   // read even for skipped frames, so the two stay in step
-        outlineSample = o.copyNextSampleBuffer()
+    if given {                 // read even for skipped frames, so the two stay in step
+        outlineSample = try await nextOutline()
         if outlineSample == nil { fail("the outline video ends before the footage, at frame \(count)") }
     }
     var loopFrame: CVPixelBuffer? = nil

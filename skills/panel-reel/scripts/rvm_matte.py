@@ -3,7 +3,7 @@
     python3 rvm_matte.py <model.onnx> <face.mp4> <matte.mp4> [--cuts 0,219,414] [--ratio 0.5]
 
 Needs onnxruntime and numpy (build.py supplies them with `uv`). The output is a grey video of the
-speaker's outline, one frame per input frame. Unlike a per-photo person mask, the model carries
+speaker's outline, one frame per input frame (or, for a ".csv" output, the same in listed parts). Unlike a per-photo person mask, the model carries
 memory from frame to frame, which is what keeps edges steady while the speaker moves. The memory
 is cleared at each cut ("--cuts": the first frame of every segment) so one shot cannot ghost into
 the next.
@@ -22,6 +22,8 @@ parser.add_argument("model")
 parser.add_argument("video")
 parser.add_argument("out")
 parser.add_argument("--cuts", default="0")
+parser.add_argument("--part-seconds", type=int, default=10,
+                    help="when <matte> ends in .csv: the length of each part listed in it")
 parser.add_argument("--ratio", type=float, default=0.8,
                     help="the model's internal working scale; lower is faster but hazier around a lit cheek")
 options = parser.parse_args()
@@ -40,11 +42,23 @@ ratio = np.array([options.ratio], dtype=np.float32)
 
 reader = subprocess.Popen(["ffmpeg", "-v", "error", "-i", options.video, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                           stdout=subprocess.PIPE)
+# A ".csv" output writes the outline as short videos beside it. A part is added to the list only once
+# it is complete, so the room can be rendered while the rest is still being cut out.
+if options.out.endswith(".csv"):
+    every = options.part_seconds
+    # Each part must start cleanly exactly on time, with no frames held back for reordering: with them
+    # macOS read one frame too many from the first part, putting the outline a frame behind the picture.
+    target = ["-bf", "0", "-g", str(every * 600), "-sc_threshold", "0", "-forced-idr", "1",
+              "-force_key_frames", f"expr:gte(t,n_forced*{every})", "-f", "segment", "-segment_time", str(every),
+              "-segment_list", options.out, "-segment_list_type", "csv", "-reset_timestamps", "1",
+              options.out[:-4] + "_%05d.mp4"]
+else:
+    target = [options.out]
 writer = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s",
                            f"{width}x{height}", "-r", rate, "-i", "pipe:0", "-vf",
                            "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p", "-colorspace", "bt709",
                            "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-                           "-c:v", "libx264", "-preset", "fast", "-crf", "8", options.out],
+                           "-c:v", "libx264", "-preset", "fast", "-crf", "8", *target],
                           stdin=subprocess.PIPE)
 
 

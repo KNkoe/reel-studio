@@ -59,7 +59,7 @@ This is a young project, built and tested on one Mac (M1 Pro, macOS 27.2) with o
 desk and speaker. Expect to adjust it for yours.
 
 - The full-frame look needs sharp, well-lit, upright footage and a roughly level camera that
-  stays still during a take. It takes about 10 minutes per 30 seconds of video.
+  stays still during a take. Long videos take a long time to render; see the skill for timings.
 - On its own it does not cut lines or add captions. The split-screen builder does both;
   the cutter on its own adds no captions or graphics.
 - The author's own style for graphics, screen recordings and assembly is private and not included.
