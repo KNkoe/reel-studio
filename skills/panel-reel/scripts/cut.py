@@ -6,7 +6,8 @@
 reel.json "cut": {"take": "sources/take-main", "keep": [["name", in, out], ...],
                   "long": 0.62, "leave": 0.17, "tail": 2.4}
 Times are the microphone's. A pause longer than "long" inside a range keeps "leave" seconds on
-each side; "tail" is how long the last picture is held. Writes work/edl.json,
+each side; "tail" is how long the last picture is held. "fillers": true takes out um, uh, er and
+hmm, and "drop": [[time, "words", "why"], ...] takes out stumbles and repeats (see tidy.py). Writes work/edl.json,
 work/words_edit.json, work/face_cut.mp4 and work/voice.wav. A take is a Clapless folder
 (camera.mov, mic.m4a, take.json) or a single video file with its own sound. A Clapless take
 with a screen recording (screen.mp4) also gets work/screen_cut.mp4, cut at the same moments.
@@ -15,10 +16,13 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SCRIPTS = HERE
+sys.path.insert(0, str(HERE))      # python -I leaves the script's own folder out
+import tidy  # noqa: E402
 FPS, RATE = 30, 48000
 TAGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 
@@ -35,18 +39,22 @@ def silences(mic):
     return list(zip(starts, ends))
 
 
-def segments(settings, quiet):
+def segments(settings, quiet, out_of=(), words=(), gone=()):
     long, leave = settings.get("long", 0.62), settings.get("leave", 0.17)
     out, frame = [], 0
     for name, a, b in settings["keep"]:
-        pieces, start = [], a
-        for s, e in quiet:
-            if e - s >= long and s > start + 0.3 and e < b - 0.3:
-                pieces.append((start, s + leave))
-                start = e - leave
-        pieces.append((start, b))
+        pieces = []
+        for x, y in tidy.subtract(a, b, out_of, words, gone) if out_of else [(a, b)]:
+            start = x
+            for s, e in quiet:
+                if e - s >= long and s > start + 0.3 and e < y - 0.3:
+                    pieces.append((start, s + leave))
+                    start = e - leave
+            pieces.append((start, y))
+        if not pieces:
+            raise SystemExit(f'nothing is left of "{name}": take it out of "keep"')
         for n, (p, q) in enumerate(pieces):
-            frames = round((q - p) * FPS)
+            frames = max(1, round((q - p) * FPS))
             out.append({"id": f"{name}_{n}", "key": name, "in": round(p, 3), "frames": frames,
                         "start": frame / FPS, "dur": frames / FPS})
             frame += frames
@@ -109,11 +117,22 @@ def main():
         subprocess.run([str(binary), str(small), str(words_file), options.locale], check=True)
     if not settings.get("keep"):
         raise SystemExit(f'transcript in {words_file}. Now list what to keep in reel.json "cut" "keep".')
-    segs, voice = segments(settings, silences(mic))
+    words = json.loads(words_file.read_text())
+    out_of, gone = tidy.removals(settings, words, mic, options.locale)
+    segs, voice = segments(settings, silences(mic), out_of, words, gone)
     total = voice + settings.get("tail", 2.4)
     (work / "edl.json").write_text(json.dumps({"segments": segs, "voice": voice, "total": total}, indent=1))
-    (work / "words_edit.json").write_text(json.dumps(edit_words(segs, json.loads(words_file.read_text()))))
+    said = [w for i, w in enumerate(words) if i not in gone]
+    (work / "words_edit.json").write_text(json.dumps(edit_words(segs, said)))
     print(f"{len(segs)} pieces, voice {voice:.2f}s, total {total:.2f}s")
+    if out_of:
+        inside = [i for i, w in enumerate(words) if any(a <= (w[0] + w[1]) / 2 < b for _, a, b in settings["keep"])]
+        fillers = sum(1 for i in inside if gone.get(i) == "filler")
+        others = sum(1 for i in inside if i in gone) - fillers
+        shorter = segments(settings, silences(mic))[1] - voice
+        print(f"taken out: {fillers} fillers, {others} other words ({shorter:.1f}s shorter)")
+        for at, said, why in json.loads((work / "doubts.json").read_text()):
+            print(f"  listen at {at:.2f}, '{said}': {why}")
     for name, _, _ in settings["keep"]:
         mine = [s for s in segs if s["key"] == name]
         print(f"  {mine[0]['start']:7.2f}-{mine[-1]['start'] + mine[-1]['dur']:7.2f}  {name}")

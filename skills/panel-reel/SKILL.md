@@ -108,7 +108,7 @@ whole recording is wanted: cut it first if only part is.
 
 To cut a take first, `python3 -I "$SKILL/scripts/cut.py" <project> --plan` transcribes on this
 Mac, and the same command without `--plan` cuts the ranges listed in the project's `reel.json`
-(see the top of the script). It also cuts a take's screen recording at the same moments, and
+(see the top of the script). Clean the speech as in "Clean the speech" below. It also cuts a take's screen recording at the same moments, and
 accepts a single video in place of a take. Render the room from `work/face_cut.mp4` and keep
 the project outside the repository. Graphics, captions and assembly are not part of this skill.
 
@@ -264,6 +264,7 @@ Ask only what changes the edit, in one go:
   never silently drop a section or visual.
 - Cut waiting ("I'll come back when it's done"), failed actions, sign-ins and
   repeats. Sign-off lines go last, even if a plug was recorded after them.
+- Clean the speech (next section) in every edit, whichever way it is built.
 - Cut on word boundaries using `silencedetect` (about −48 dB for a quiet lav, −40
   for a normal one). A word is captioned only if its midpoint is inside the segment.
 - Word timings can fold a pause into a neighbouring word, so a clean-looking cut can
@@ -276,6 +277,49 @@ Ask only what changes the edit, in one go:
   did not reveal.)
 - Then capture the screen at the middle of every chosen line. Aim shots from what
   those frames actually show, not from the transcript.
+
+### Clean the speech
+
+A good edit has no ums, stumbles or doubled points, and still sounds like them. Be moderate:
+the aim is the best video, not the shortest.
+
+| Take out | Keep |
+|---|---|
+| um, uh, er, hmm: always | Repeats said on purpose: emphasis, a chant, a punchline |
+| Words said twice by accident: keep the better one | Jokes, laughter, reactions, their own turns of phrase |
+| False starts and corrections: keep the corrected version | Questions to viewers, calls to action, plugs, sign-off |
+| Sentences abandoned halfway | Any fact or point said only once |
+| "I mean", "like", "you know" where they pile up or break a sentence | The same words where speech flows naturally |
+| A point made twice: keep the stronger telling | |
+| A detour that breaks the story, only if clearly better without it | |
+
+- Read the whole script as a viewer. Each kept line must follow from the one before.
+- What is left must make sense and mean what they meant. Never join words into a claim they
+  did not make.
+- The transcript mishears. If a "stumble" could be a real word heard wrongly, keep it.
+- In doubt, keep it and name it in your report as something that could also go.
+
+With `cut.py`, set `"fillers": true` in `reel.json` "cut", pick the ranges in "keep", then:
+
+```bash
+python3 -I "$SKILL/scripts/tidy.py" <project>               # the kept script, and places to look at
+python3 -I "$SKILL/scripts/tidy.py" <project> --words 70 80 # word times for those seconds
+python3 -I "$SKILL/scripts/cut.py" <project>                # removes fillers and every "drop"
+python3 -I "$SKILL/scripts/tidy.py" <project> --check       # listens to the result
+```
+
+List removals as `"drop": [[12.40, "so the,", "said twice"], ...]`: the first word's time in the
+recording, the words exactly as transcribed (commas and capitals are ignored), and why. A sound
+the transcript missed goes in as a stretch, `[18.9, 19.5, "um"]`; `--check` gives those times.
+The cutter places each cut in a pause or at a quiet moment, listens to the join with the same
+on-device transcriber and moves it if a neighbouring word went too (about 2 minutes for 40
+joins). It prints any join it could not settle: look at those, narrow or widen them with a
+stretch, or leave the words in. A transcriber is not a person's ear: say so.
+
+Report what came out (how many fillers, the passages in their words, the seconds saved), the
+joins still doubtful and what you left in on purpose.
+
+For a split-screen `plan.json`, follow the same table when choosing segments.
 
 ### 4. Write plan.json
 

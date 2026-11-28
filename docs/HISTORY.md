@@ -223,3 +223,15 @@ the author's own edits, kept so the reasons travel with the code.
 - Against the old tool the result differs slightly (the input is no longer converted first). A
   dark gap under the arm, which the old cut-out already switched between person and wall, now
   switches on slightly different frames.
+
+## 2026-11-28 — cleaning the speech
+
+- Edits kept every filler and stumble: the cutter only shortened pauses and dropped whole
+  ranges. `tidy.py` now shows the kept speech as a script with likely repeats and false starts,
+  and `cut.py` removes fillers and chosen words. The skill says what to remove and what to keep.
+- Word timings from the transcriber often include the silence before a word and can be about
+  0.2 s off, so cuts placed on them clipped neighbouring words. Each cut is now placed from the
+  audio and checked by transcribing the join, trying other positions if a neighbour is lost.
+- Tried on the sound of one 8-minute recording: 30 fillers and 38 stumbled words came out
+  (about 49 s). A second transcription heard no fillers; two joins were flagged for a person to
+  check. Nobody has listened to it yet, and picture jumps at these cuts have not been reviewed.

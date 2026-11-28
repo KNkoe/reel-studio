@@ -14,6 +14,8 @@ say so.
 - Keep their questions to viewers, calls to action and course plugs.
 - In a revision, never silently drop a section or visual they liked. Never clip the ending.
 - No hard length cap: an approved reel ran 2:03. Keep the content, cut repetition.
+- **Clean the speech** (2026-11-28): take out repetitions, mistakes, fillers and points that
+  break the flow of the story. Not too aggressively: choose what makes the video best.
 
 ## Picture
 
